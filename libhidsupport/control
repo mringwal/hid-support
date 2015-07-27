@@ -1,0 +1,8 @@
+Package: ch.ringwald.libhidsupport
+Name: hidsupport
+Version: 0.0.1
+Architecture: iphoneos-arm
+Description: Client API for HID-Support tweak
+Maintainer: Matthias Ringwald
+Author: Matthias Ringwald
+Section: Tweaks

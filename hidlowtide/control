@@ -1,0 +1,9 @@
+Package: ch.ringwald.hid-lowtide
+Name: hid-lowtide
+Depends: mobilesubstrate
+Version: 0.0.1
+Architecture: iphoneos-arm
+Description: An awesome MobileSubstrate tweak!
+Maintainer: Matthias Ringwald
+Author: Matthias Ringwald
+Section: Tweaks

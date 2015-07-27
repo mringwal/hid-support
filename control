@@ -1,0 +1,11 @@
+Package: ch.ringwald.hidsupport
+Name: hid-support
+Depends: mobilesubstrate (>= 0.9.5101), com.rpetrich.rocketbootstrap (>= 1.0.2)
+Version: 1.2
+Architecture: iphoneos-arm
+Description: Support for Human Interface Devices on iOS and new Apple TV
+Homepage: http://code.google.com/p/hid-support/
+Maintainer: Matthias Ringwald
+Author: Matthias Ringwald
+Section: Tweaks
+Tag: role::developer
