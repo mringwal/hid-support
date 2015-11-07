@@ -397,7 +397,9 @@ static void postMouseEventIOHID(float x, float y, int click){
     IOHIDEventSetIntegerValue(parent, kIOHIDEventFieldDigitizerIsDisplayIntegrated, true);
     if ($IOHIDEventSetSenderID){
         // not in SDK 5.1 ARMv6 slice of IOKIT
-        ($IOHIDEventSetSenderID)(parent, 0x0123456789ABCDEF);
+        ($IOHIDEventSetSenderID)(parent, 0x8000000817319375);
+    } else {
+        // NSLog(@"hid-support: sendIOHIDEvent iOHIDEventSetSenderID missing");
     }
     IOHIDEventRef child = IOHIDEventCreateDigitizerFingerEvent(kCFAllocatorDefault, mach_absolute_time(), 3, 2, child_flags, xf, yf, 0, 0, 0, click, click, 0);
     IOHIDEventAppendEvent(parent, child);
