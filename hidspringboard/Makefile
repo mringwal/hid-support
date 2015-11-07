@@ -3,8 +3,7 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = hidspringboard
 hidspringboard_FILES = Tweak.xm
 hidspringboard_CFLAGS = -I../3rdParty
-hidspringboard_LDFLAGS = $(ISYSROOT)/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit
-hidspringboard_PRIVATE_FRAMEWORKS = QuartzCore GraphicsServices
+hidspringboard_PRIVATE_FRAMEWORKS = QuartzCore GraphicsServices IOKit
 
 # rocketbootstrap
 hidspringboard_CFLAGS    += -I/Projects/RocketBootstrap/
