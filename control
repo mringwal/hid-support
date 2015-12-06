@@ -1,6 +1,6 @@
 Package: ch.ringwald.hidsupport
 Name: hid-support
-Depends: mobilesubstrate (>= 0.9.5101), com.rpetrich.rocketbootstrap (>= 1.0.2)
+Depends: mobilesubstrate (>= 0.9.5101), com.rpetrich.rocketbootstrap (>= 1.0.2) | firmware (<< 7.0)
 Version: 1.3
 Architecture: iphoneos-arm
 Description: Support for Human Interface Devices on iOS and new Apple TV
