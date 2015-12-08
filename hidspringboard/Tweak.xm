@@ -868,18 +868,26 @@ static CFDataRef myCallBack(CFMessagePortRef local, SInt32 msgid, CFDataRef cfDa
     return returnData;  // as stated in header, both data and returnData will be released for us after callback returns
 }
 
+static void try_rocketbootstrap_cfmessageportexposelocal(CFMessagePortRef local){
+    void * rbs_lib = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+    if (!rbs_lib) return;
+    void (*cfmessageportexposelocal)(CFMessagePortRef) =(void (*)(CFMessagePortRef)) dlsym(rbs_lib, "rocketbootstrap_cfmessageportexposelocal");
+    if (!cfmessageportexposelocal);
+    cfmessageportexposelocal(local);
+}
+
 static void setupSpringboardMessagePort(){
     CFMessagePortRef local = CFMessagePortCreateLocal(NULL, CFSTR(HID_SUPPORT_PORT_NAME), myCallBack, NULL, NULL);
     CFRunLoopSourceRef source = CFMessagePortCreateRunLoopSource(NULL, local, 0);
     CFRunLoopAddSource(CFRunLoopGetCurrent(), source, kCFRunLoopCommonModes);
-    rocketbootstrap_cfmessageportexposelocal(local);
+    try_rocketbootstrap_cfmessageportexposelocal(local);
 }
 
 static void setupBackboarddMessagePort(){
     CFMessagePortRef local = CFMessagePortCreateLocal(NULL, CFSTR(HID_SUPPORT_PORT_NAME_BB), myCallBack, NULL, NULL);
     CFRunLoopSourceRef source = CFMessagePortCreateRunLoopSource(NULL, local, 0);
     CFRunLoopAddSource(CFRunLoopGetCurrent(), source, kCFRunLoopCommonModes);
-    rocketbootstrap_cfmessageportexposelocal(local);
+    try_rocketbootstrap_cfmessageportexposelocal(local);
 }
 
 // Support GSEventKeyDown on iOS 7 and later
