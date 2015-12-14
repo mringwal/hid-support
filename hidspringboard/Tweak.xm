@@ -18,11 +18,16 @@
 #include <UIKit/UIKit.h>
 
 #include <IOKit/hid/IOHIDEvent.h>
+#include <IOKit/hid/IOHIDEventSystem.h>
 #include <IOKit/hid/IOHIDEventSystemClient.h>
+#include <IOKit/hid/IOHIDEventSystemConnection.h>
+#include <IOKit/hid/IOHIDUsageTables.h>
 #include "RocketBootstrap.h"
 
 // kenytm
 #import <GraphicsServices/GSEvent.h>
+
+#import <rfb/keysym.h>
 
 #include "../hid-support-internal.h"
 
@@ -34,6 +39,10 @@ static inline void MyMSHookSymbol(Type_ *&value, const char *name, void *handle 
 
 extern "C" uint64_t   GSCurrentEventTimestamp(void);
 extern "C" GSEventRef _GSCreateSyntheticKeyEvent(UniChar key, BOOL up, BOOL repeating);
+extern "C" {
+    IOHIDEventSystemClientRef IOHIDEventSystemClientCreate(CFAllocatorRef allocator);
+    void IOHIDEventSystemClientDispatchEvent(IOHIDEventSystemClientRef client, IOHIDEventRef event);
+}
 
 // used interface from CAWindowServer & CAWindowServerDisplay
 @interface CAWindowServer : NSObject
@@ -213,6 +222,14 @@ static void dlset(Type_ &function, const char *name) {
 
 // project GSEventRecord for OS < 3 if needed
 void detectOSLevel(){
+    if (kCFCoreFoundationVersionNumber > 1200) { // iOS 9.x
+        Level_ = 7;
+    }
+
+    if (kCFCoreFoundationVersionNumber > 1140) { // iOS 8.x
+        Level_ = 6;
+    }
+
     if (kCFCoreFoundationVersionNumber > 800) { // iOS 7.x
         Level_ = 5;
         return;
@@ -432,7 +449,90 @@ static mapping specialMapping[] = {
 
 static int specialMapppingCount = sizeof(specialMapping) / sizeof(mapping);
 
+typedef struct hid_usage_mapping {
+    unichar unicode;
+    uint16_t usage;
+    int with_shift;
+} hid_usage_mapping;
+
+static hid_usage_mapping specialHidUsageMapping[] = {
+    { XK_space,        kHIDUsage_KeyboardSpacebar,            0 },
+    { XK_apostrophe,   kHIDUsage_KeyboardQuote,               0 }, // '
+    { XK_comma,        kHIDUsage_KeyboardComma,               0 }, // ,
+    { XK_minus,        kHIDUsage_KeyboardHyphen,              0 }, // -
+    { XK_period,       kHIDUsage_KeyboardPeriod,              0 }, // .
+    { XK_slash,        kHIDUsage_KeyboardSlash,               0 }, // /
+    { XK_semicolon,    kHIDUsage_KeyboardSemicolon,           0 }, // ;
+    { XK_equal,        kHIDUsage_KeyboardEqualSign,           0 }, // =
+    { XK_bracketleft,  kHIDUsage_KeyboardOpenBracket,         0 }, // [
+    { XK_backslash,    kHIDUsage_KeyboardBackslash,           0 }, // \
+    { XK_bracketright, kHIDUsage_KeyboardCloseBracket,        0 }, // ]
+    { XK_grave,        kHIDUsage_KeyboardGraveAccentAndTilde, 0 }, // `
+    { 0x008,           kHIDUsage_KeyboardDeleteOrBackspace,   0 }, // BackSpace
+    { 0x00A,           kHIDUsage_KeyboardReturnOrEnter,       0 }, // Return
+    { 0x00D,           kHIDUsage_KeyboardReturnOrEnter,       1 }, // Enter
+    { XK_exclam,       kHIDUsage_Keyboard1,                   1 }, // !
+    { XK_quotedbl,     kHIDUsage_KeyboardQuote,               1 }, // "
+    { XK_numbersign,   kHIDUsage_Keyboard3,                   1 }, // #
+    { XK_dollar,       kHIDUsage_Keyboard4,                   1 }, // $
+    { XK_percent,      kHIDUsage_Keyboard5,                   1 }, // %
+    { XK_ampersand,    kHIDUsage_Keyboard7,                   1 }, // &
+    { XK_parenleft,    kHIDUsage_Keyboard9,                   1 }, // (
+    { XK_parenright,   kHIDUsage_Keyboard0,                   1 }, // )
+    { XK_asterisk,     kHIDUsage_Keyboard8,                   1 }, // *
+    { XK_plus,         kHIDUsage_KeyboardEqualSign,           1 }, // +
+    { XK_colon,        kHIDUsage_KeyboardSemicolon,           1 }, // :
+    { XK_less,         kHIDUsage_KeyboardComma,               1 }, // <
+    { XK_greater,      kHIDUsage_KeyboardPeriod,              1 }, // >
+    { XK_question,     kHIDUsage_KeyboardSlash,               1 }, // ?
+    { XK_at,           kHIDUsage_Keyboard2,                   1 }, // @
+    { XK_asciicircum,  kHIDUsage_Keyboard6,                   1 }, // ^
+    { XK_underscore,   kHIDUsage_KeyboardHyphen,              1 }, // _
+    { XK_braceleft,    kHIDUsage_KeyboardOpenBracket,         1 }, // {
+    { XK_bar,          kHIDUsage_KeyboardBackslash,           1 }, // |
+    { XK_braceright,   kHIDUsage_KeyboardCloseBracket,        1 }, // }
+    { XK_asciitilde,   kHIDUsage_KeyboardGraveAccentAndTilde, 1 }, // ~
+};
+static int specialHidUsageMappingCount = sizeof(specialHidUsageMapping) / sizeof(hid_usage_mapping);
+
+static void postKeyEventNew(Boolean down, uint16_t modifier, unichar unicode) {
+    uint16_t usage = 0x00;
+    int withShift = 0;
+    if(XK_a <= unicode && unicode <= XK_z){
+        usage = unicode - 0x05D;
+    }else if (XK_A <= unicode && unicode <= XK_Z){
+        withShift = 1;
+        usage = unicode - 0x03D;
+    }else if(unicode == XK_0){
+        usage = kHIDUsage_Keyboard0;
+    }else if(XK_1 <= unicode && unicode <= XK_9){
+        usage = unicode - 0x13;
+    }
+    if(usage == 0x00) {
+        for (int i = 0; i < specialHidUsageMappingCount; i++) {
+            if(specialHidUsageMapping[i].unicode == unicode){
+                usage     = specialHidUsageMapping[i].usage;
+                withShift = specialHidUsageMapping[i].with_shift;
+            }
+        }
+    }
+    if(usage == 0x00){
+        // NSLog(@"Failed to convert unichar to hidUsage.");
+        return;
+    }
+    if(withShift != 0){
+        postIOHIDEvent(IOHIDEventCreateKeyboardEvent(kCFAllocatorDefault, mach_absolute_time(), kHIDPage_KeyboardOrKeypad, kHIDUsage_KeyboardLeftShift, down, 0));
+    }
+    postIOHIDEvent(IOHIDEventCreateKeyboardEvent(kCFAllocatorDefault, mach_absolute_time(), kHIDPage_KeyboardOrKeypad, usage, down, 0));
+}
+
 static void postKeyEvent(int down, uint16_t modifier, unichar unicode){
+    if(Level_ >= 5){
+        // NSLog(@"Run postLeyEventNew(), key == %x", unicode);
+        Boolean isDown = down ? YES : NO;
+        return postKeyEventNew(isDown, modifier, unicode);
+    }
+
     CGPoint location = CGPointMake(100, 100);
     CFStringRef string = NULL;
     GSEventRef  event  = NULL;
@@ -872,8 +972,10 @@ static void try_rocketbootstrap_cfmessageportexposelocal(CFMessagePortRef local)
     void * rbs_lib = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
     if (!rbs_lib) return;
     void (*cfmessageportexposelocal)(CFMessagePortRef) =(void (*)(CFMessagePortRef)) dlsym(rbs_lib, "rocketbootstrap_cfmessageportexposelocal");
-    if (!cfmessageportexposelocal);
-    cfmessageportexposelocal(local);
+    if (!cfmessageportexposelocal) {
+    } else {
+        cfmessageportexposelocal(local);
+    }
 }
 
 static void setupSpringboardMessagePort(){
